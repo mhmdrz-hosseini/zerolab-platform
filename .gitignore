@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# deps / build
+node_modules/
+.next/
+out/
+
+# local storage driver (src/server/storage/local.ts)
+storage/
+
+# misc
+*.log
+.DS_Store
+
+# local agent / research scratch (kept local only)
+.scratch/
+.zcode/
+tsconfig.tsbuildinfo

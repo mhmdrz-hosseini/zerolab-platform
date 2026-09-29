@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/*
+ * ZeroLab design tokens — same palette as the landing.
+ * Utilities are exposed through @theme inline (bg-paper, text-ink, ...).
+ */
+:root {
+  --paper: #f5f0eb;
+  --cream: #ede5de;
+  --ink: #3d1f27;
+  --plum: #6b3d48;
+  --line: #cdbbb8;
+  --accent: #b78978;
+  --accent-soft: #d9b9b1;
+  --teal: #507567;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-plum: var(--plum);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-teal: var(--teal);
+  --font-sans: "Estedad Variable", "Estedad", system-ui, -apple-system, "Segoe UI",
+    tahoma, arial, sans-serif;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
