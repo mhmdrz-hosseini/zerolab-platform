@@ -36,7 +36,11 @@ const COPY = {
 } as const;
 
 const POLL_MS = 2000;
-const POLL_TIMEOUT_MS = 7 * 60 * 1000;
+/** The local ComfyUI/Pixal3D engine can legitimately need ~10-12 min cold on
+ * the 3090 box — on the 12GB local desktop GPU it is slower still (3 view
+ * generations queue on the GPU, then the 3D graph + model loads), so poll to
+ * half an hour before declaring failure. */
+const POLL_TIMEOUT_MS = 30 * 60 * 1000;
 /** Sample mode (no TRIPO key): success arrives instantly — ramp 0→100 so the
  * hologram loop gets its moment before the morph. */
 const SAMPLE_RAMP_S = 1.6;

@@ -1,0 +1,1 @@
+ALTER TABLE "threed_tasks" ADD COLUMN "solid_glb_key" text;

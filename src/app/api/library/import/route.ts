@@ -58,7 +58,7 @@ function isAuthorized(req: Request): boolean {
 async function downloadImage(
   imageUrl: string,
 ): Promise<{ bytes: Uint8Array; mime: string }> {
-  const proxied = `https://images.weserv.nl/?url=${encodeURIComponent(imageUrl)}&n=-1&w=1600&we`;
+  const proxied = `https://images.weserv.nl/?url=${encodeURIComponent(imageUrl)}&n=-1&w=1600&we&output=webp&q=82`;
   const attempts = [
     { url: imageUrl, via: "origin" },
     { url: proxied, via: "weserv" },

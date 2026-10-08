@@ -3,7 +3,6 @@ import "server-only";
 
 export const AVAL_BASE_URL = "https://api.avalai.ir/v1";
 export const AVAL_CHAT_MODEL = "deepseek-v4.1-flash";
-export const AVAL_IMAGE_MODEL = "gemini-3.1-flash-lite-image";
 
 /**
  * Server-only AvalAI client (OpenAI-compatible). Reads AVAL_API_KEY from the

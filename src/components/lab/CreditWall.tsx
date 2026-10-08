@@ -29,17 +29,19 @@ interface QuotaResponse {
   chat: UsedTotal;
   image: UsedTotal;
   threed: UsedTotal;
+  mold: UsedTotal;
   paid: number;
   warnings: Record<CreditService, boolean>;
   locked: Record<CreditService, boolean>;
 }
 
-const KINDS: readonly CreditService[] = ["chat", "image", "threed"];
+const KINDS: readonly CreditService[] = ["chat", "image", "threed", "mold"];
 
 const KIND_LABELS: Record<CreditService, string> = {
   chat: "چت",
   image: "تصویر",
   threed: "سه‌بعدی",
+  mold: "قالب",
 };
 
 const COPY = {
@@ -50,6 +52,8 @@ const COPY = {
     "اعتبار رایگان شما برای تولید تصویر تمام شده. برای ادامه اعتبار اضافه کنید — طرح‌تون همین‌جا منتظر می‌مونه.",
   lockThreed:
     "اعتبار رایگان شما برای ساخت سه‌بعدی تمام شده. برای ادامه اعتبار اضافه کنید — طرح‌تون همین‌جا منتظر می‌مونه.",
+  lockMold:
+    "اعتبار رایگان شما برای ساخت قالب تمام شده. برای ادامه اعتبار اضافه کنید — مدلتون همین‌جا منتظر می‌مونه.",
   addCredit: "افزودن اعتبار",
   dismiss: "بستن هشدار اعتبار",
   dialogTitle: "افزودن اعتبار",
@@ -79,6 +83,7 @@ const warnKey = (kind: CreditService) => `zl-credit-warn-${kind}`;
 const lockCopy: Partial<Record<CreditService, string>> = {
   image: COPY.lockImage,
   threed: COPY.lockThreed,
+  mold: COPY.lockMold,
 };
 
 const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
@@ -87,6 +92,7 @@ const emptyFlags = (): Record<CreditService, boolean> => ({
   chat: false,
   image: false,
   threed: false,
+  mold: false,
 });
 
 export function CreditWall() {

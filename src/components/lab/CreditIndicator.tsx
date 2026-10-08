@@ -22,6 +22,7 @@ interface QuotaResponse {
   chat: UsedTotal;
   image: UsedTotal;
   threed: UsedTotal;
+  mold: UsedTotal;
   paid: number;
   /** Derived flags from /api/quota (ticket 16) — decorative here. */
   warnings?: Record<CreditService, boolean>;
@@ -32,6 +33,7 @@ const KIND_META: ReadonlyArray<{ kind: CreditService; label: string }> = [
   { kind: "chat", label: "چت" },
   { kind: "image", label: "تصویر" },
   { kind: "threed", label: "سه‌بعدی" },
+  { kind: "mold", label: "قالب" },
 ];
 
 const COPY = {

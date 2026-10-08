@@ -1,0 +1,21 @@
+# Rebuilt by setup.bat — never commit
+# engine/    portable Blender distributions (~1.9 GB)
+# moldforge/ clone of Plesuro/MoldForge; setup.bat re-clones it
+engine/
+moldforge/
+.venv/
+
+# Runtime data (user uploads, generated molds, quarantined parts)
+uploads/
+output/
+quarantine/
+
+# Input model library + generated test-run artifacts (run via webui/run_*_tests.py)
+test/
+
+# Logs, caches, scratch
+*.log
+__pycache__/
+*.pyc
+.zcode/
+test_model.stl

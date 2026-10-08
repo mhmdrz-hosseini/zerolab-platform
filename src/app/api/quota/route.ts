@@ -34,9 +34,10 @@ export async function GET() {
     chat: { used: 0, total: 0 },
     image: { used: 0, total: 0 },
     threed: { used: 0, total: 0 },
+    mold: { used: 0, total: 0 },
     paid: 0,
-    warnings: { chat: false, image: false, threed: false },
-    locked: { chat: false, image: false, threed: false },
+    warnings: { chat: false, image: false, threed: false, mold: false },
+    locked: { chat: false, image: false, threed: false, mold: false },
   };
   for (const kind of CREDIT_SERVICES) {
     const q = quota[kind];

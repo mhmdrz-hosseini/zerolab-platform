@@ -11,6 +11,7 @@ import {
   getOrCreateSession,
   refund,
 } from "@/server/credits";
+import { startComfyThreedTask } from "@/server/comfy/threed";
 import { getStorage } from "@/server/storage";
 import { createImageToModelTask, hasTripoKey } from "@/server/tripo/client";
 import { startPolling } from "@/server/tripo/poller";
@@ -73,47 +74,67 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (!hasTripoKey()) {
-      // Sample mode — hand back the placeholder GLB immediately.
-      const glbKey = await ensureSampleGlb();
+    // Provider order (2026-10-05): the local ComfyUI/Pixal3D engine is primary
+    // (free, no public URL needed); Tripo stays for THREED_PROVIDER=tripo or
+    // when no ComfyUI server is configured; sample GLB is the last resort.
+    const provider = process.env.THREED_PROVIDER ?? (process.env.COMFYUI_URL ? "comfy" : "tripo");
+
+    if (provider === "comfy") {
       const [row] = await db
         .insert(threedTasks)
         .values({
           sessionId,
           inputImageId: image.id,
-          provider: "sample",
-          status: "success",
-          glbKey,
+          provider: "comfy",
+          status: "queued",
           creditsSpent: COSTS.threed,
         })
         .returning({ id: threedTasks.id });
-      return NextResponse.json({
-        taskId: row.id,
-        status: "success",
-        glbUrl: getStorage().publicUrl(glbKey),
-        sample: true,
-      });
+      startComfyThreedTask(row.id);
+      return NextResponse.json({ taskId: row.id, status: "queued" });
     }
 
-    // Real Tripo task — the image URL must be reachable from Tripo's servers
-    // (public deploy or a tunnel in dev).
-    const origin = new URL(req.url).origin;
-    const imageUrl = `${origin}${getStorage().publicUrl(image.storageKey)}`;
-    const providerTaskId = await createImageToModelTask(imageUrl);
+    if (provider === "tripo" && hasTripoKey()) {
+      // Real Tripo task — the image URL must be reachable from Tripo's servers
+      // (public deploy or a tunnel in dev).
+      const origin = new URL(req.url).origin;
+      const imageUrl = `${origin}${getStorage().publicUrl(image.storageKey)}`;
+      const providerTaskId = await createImageToModelTask(imageUrl);
+      const [row] = await db
+        .insert(threedTasks)
+        .values({
+          sessionId,
+          inputImageId: image.id,
+          provider: "tripo",
+          providerTaskId,
+          status: "queued",
+          creditsSpent: COSTS.threed,
+        })
+        .returning({ id: threedTasks.id });
+
+      startPolling(row.id);
+      return NextResponse.json({ taskId: row.id, status: "queued" });
+    }
+
+    // Sample mode — hand back the placeholder GLB immediately.
+    const glbKey = await ensureSampleGlb();
     const [row] = await db
       .insert(threedTasks)
       .values({
         sessionId,
         inputImageId: image.id,
-        provider: "tripo",
-        providerTaskId,
-        status: "queued",
+        provider: "sample",
+        status: "success",
+        glbKey,
         creditsSpent: COSTS.threed,
       })
       .returning({ id: threedTasks.id });
-
-    startPolling(row.id);
-    return NextResponse.json({ taskId: row.id, status: "queued" });
+    return NextResponse.json({
+      taskId: row.id,
+      status: "success",
+      glbUrl: getStorage().publicUrl(glbKey),
+      sample: true,
+    });
   } catch (err) {
     await refund(sessionId, movement, image.id);
     console.error("[api/threed] task creation failed", err);

@@ -40,11 +40,21 @@ interface ChatMessage {
   kind?: "welcome" | "chip";
   /** Content sent to the API when it differs from the visible text. */
   wireContent?: string;
+  /** Reference image (library pick) shown in the bubble and sent to the API. */
+  imageUrl?: string;
   /** Upstream/stream failed — offers a retry. */
   failed?: boolean;
 }
 
-type PayloadMessage = Pick<ChatMessage, "role" | "content">;
+/** Multimodal wire format — mirrors what /api/chat accepts. */
+type WirePart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+type PayloadMessage = {
+  role: "assistant" | "user";
+  content: string | WirePart[];
+};
 
 interface QuotaShape {
   chat: { used: number; total: number };
@@ -155,8 +165,9 @@ export function ChatPanel() {
     return () => window.removeEventListener("zl:quota-changed", refresh);
   }, [loadQuota]);
 
-  // Ticket 15 → 12: an item added to the chat shows as a chip and rides
-  // (prefixed context line, ticket-06 contract) into the next user message.
+  // Ticket 15 → 12: an item added to the chat shows as a chip (with its
+  // thumbnail) and rides — prefixed context line + attached image — into the
+  // next user message, so the model sees and adjusts that exact design.
   useEffect(
     () =>
       onLabEvent("lab:library-add", (detail) => {
@@ -167,9 +178,43 @@ export function ChatPanel() {
             id: rid(),
             role: "user",
             kind: "chip",
+            imageUrl: detail.item.url,
             content: `طرح از لایبریری اضافه شد: ${detail.item.title}`,
           },
         ]);
+      }),
+    [],
+  );
+
+  // History (2026-10-05): resume a past chat — swap the transcript in and
+  // adopt its chat id so the next send continues the same conversation.
+  useEffect(
+    () =>
+      onLabEvent("lab:restore-chat", ({ chatId }) => {
+        void (async () => {
+          const res = await fetch(`/api/history/chats/${chatId}`, { cache: "no-store" });
+          if (!res.ok) return;
+          const data = (await res.json()) as {
+            id: string;
+            messages: Array<{
+              role: "user" | "assistant";
+              content: string;
+              imageUrl?: string | null;
+            }>;
+          };
+          chatIdRef.current = data.id;
+          setHint(null);
+          setMessages(
+            data.messages.length > 0
+              ? data.messages.map((m, i) => ({
+                  id: `h${i}`,
+                  role: m.role,
+                  content: m.content,
+                  ...(m.imageUrl ? { imageUrl: m.imageUrl } : {}),
+                }))
+              : [WELCOME],
+          );
+        })();
       }),
     [],
   );
@@ -286,24 +331,46 @@ export function ChatPanel() {
     }
   }
 
+  /** Wire form of a message: text, or text + attached reference image. */
+  function toWire(m: ChatMessage): PayloadMessage {
+    const text = m.wireContent ?? m.content;
+    return m.imageUrl
+      ? {
+          role: m.role,
+          content: [
+            { type: "text", text },
+            { type: "image_url", image_url: { url: m.imageUrl } },
+          ],
+        }
+      : { role: m.role, content: text };
+  }
+
   function submit(override?: string) {
     const text = (override ?? draft).trim();
     if (!text || streaming) return;
 
     const lib = pendingLibRef.current;
     pendingLibRef.current = null;
-    const wire = lib ? `${buildLibraryContext(lib)}\n\n${text}` : text;
+    const wireText = lib
+      ? `${buildLibraryContext(lib, { withImage: true })}\n\n${text}`
+      : text;
+
+    const userMessage: ChatMessage = {
+      id: rid(),
+      role: "user",
+      content: text,
+      ...(lib ? { wireContent: wireText, imageUrl: lib.url } : {}),
+    };
 
     const payload: PayloadMessage[] = messagesRef.current
       .filter((m) => !m.kind && !m.failed)
-      .map((m) => ({ role: m.role, content: m.wireContent ?? m.content }));
-    payload.push({ role: "user", content: wire });
+      .map(toWire);
+    payload.push(toWire(userMessage));
 
-    const userId = rid();
     const assistantId = rid();
     setMessages((prev) => [
       ...prev.filter((m) => !m.failed), // drop stale error bubbles
-      { id: userId, role: "user", content: text, wireContent: wire },
+      userMessage,
       { id: assistantId, role: "assistant", content: "" },
     ]);
     setDraft("");
@@ -556,17 +623,35 @@ function Bubble({
 }) {
   if (message.kind === "chip") {
     return (
-      <span className="mx-auto max-w-[95%] rounded-full border border-line bg-paper px-3 py-1 text-center text-[11px] font-bold text-ink/70">
-        {message.content}
+      <span className="mx-auto flex max-w-[95%] items-center gap-2 rounded-full border border-line bg-paper py-1 pe-3 ps-1 text-center text-[11px] font-bold text-ink/70">
+        {message.imageUrl && (
+          <img
+            src={message.imageUrl}
+            alt=""
+            loading="lazy"
+            className="h-7 w-7 shrink-0 rounded-full object-cover"
+          />
+        )}
+        <span className="min-w-0 truncate">{message.content}</span>
       </span>
     );
   }
 
   if (message.role === "user") {
     return (
-      <p className="max-w-[85%] self-end whitespace-pre-wrap rounded-2xl bg-plum px-4 py-2.5 text-sm leading-7 text-paper">
-        {message.content}
-      </p>
+      <div className="flex max-w-[85%] flex-col items-end gap-1.5 self-end">
+        {message.imageUrl && (
+          <img
+            src={message.imageUrl}
+            alt="تصویر مرجع طرح"
+            loading="lazy"
+            className="max-h-44 w-auto max-w-full rounded-xl border-2 border-plum/60 bg-cream object-cover"
+          />
+        )}
+        <p className="whitespace-pre-wrap rounded-2xl bg-plum px-4 py-2.5 text-sm leading-7 text-paper">
+          {message.content}
+        </p>
+      </div>
     );
   }
 

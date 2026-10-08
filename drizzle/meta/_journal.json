@@ -8,6 +8,34 @@
       "when": 1790541442172,
       "tag": "0000_public_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791301013812,
+      "tag": "0001_optimal_molly_hayes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791359403170,
+      "tag": "0002_many_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791396574283,
+      "tag": "0003_flashy_captain_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791447299507,
+      "tag": "0004_orange_sunset_bain",
+      "breakpoints": true
     }
   ]
 }

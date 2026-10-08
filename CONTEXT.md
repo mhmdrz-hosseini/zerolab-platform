@@ -175,3 +175,33 @@ Silicone or PLA direct casting?
 - **Silicone Mold** (دامنهٔ باز): **Resin / Plaster / Jesmonite / Concrete / Soap / Wax / Chocolate / Food / Ice / Prototype materials**
 
 > یادآوری از نقشهٔ lab-v1: سرویس فعلی پلتفرم فقط قالب سیلیکونی است؛ دستهٔ Direct-to-PLA یک نوع خدمت آینده است و فعلاً فقط در متن/تاکسونومی جا می‌گیرد، ساخته نمی‌شود.
+
+---
+
+## واژه‌نامهٔ استودیو قالب (Mold Studio Glossary)
+
+واژگان canonical فارسی ↔ اصطلاح MoldForge — مرجع واحد UI استودیو (کاتالوگ کامل: `src/config/mold-params.ts`):
+
+| فارسی (canonical) | MoldForge / انگلیسی | کلید |
+|---|---|---|
+| قالب جعبه‌ریزهٔ سیلیکونی | Silicone Pour Box | `box_style=POUR_BOX` |
+| قالب پرینت مستقیم | Direct Printed Mold | `box_style=SOLID` |
+| سینی ریختگی | Tray / Open Pour | `box_style=TRAY` |
+| پوستهٔ چاپی | Printed Shell | `shell_wall` |
+| حلقهٔ ریختن (قیف) | Sprue / Pour Funnel | `sprue` |
+| گلوگاه | Throat | `sprue_radius` |
+| راه‌گاه هوا | Air Vent | `vent_count` / `vent_radius` |
+| درز قالب / صفحهٔ برش | Parting Seam / Plane | `split_axis` / `contoured` |
+| پین هم‌راستایی | Alignment Key | `key_count` / `registration` |
+| بال بستن | Clamp Wing | `wings` |
+| فلنج پایه | Mounting Flange | `base_flange` |
+| صفحهٔ کف جداشدنی | Detachable Key Plate | `base_plate` |
+| لقی مونتاژ | Fit Clearance | `fit_clearance` |
+| ترمیم مدل | Heal Mesh | `heal` |
+| رمش امن | Safe (Voxel) Remesh | `voxel_safe` |
+| کاهش مثلث‌ها | Decimate | `decimate` |
+| متریال ریختگی | Cast Material/Preset | `cast_preset` |
+| تعداد قطعات قالب | Mold Pieces | `parts_count` |
+| ضخامت سیلیکون | Silicone/Wall Thickness | `wall_thickness` |
+
+تصمیم‌های واژه‌ای: «جعبه‌ریزه» (نه «جعبه‌ریز») برای POUR_BOX؛ «حلقهٔ ریختن» برای funnel/sprue در متن کاربر (در متن فنی sprue حفظ می‌شود)؛ «راه‌گاه هوا» (نه «ونتیلاسیون»)؛ قطعات قالب «تکه/قطعه» شمرده می‌شود نه «پیس».

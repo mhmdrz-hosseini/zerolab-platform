@@ -74,7 +74,7 @@ const COPY = {
   emptySearchSuffix: "پیدا نشد.",
   lock: "اعتبار کافی نیست — برای این کار اعتبار اضافه کن.",
   addCredit: "افزودن اعتبار",
-  detailHint: "با افزودن به چت، مشخصات طرح برای زیرو فرستاده می‌شود.",
+  detailHint: "با افزودن به چت، تصویر و مشخصات طرح برای زیرو فرستاده می‌شود تا ببیندش و سفارشی‌سازی را روی خودِ طرح انجام دهد.",
 } as const;
 
 const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);

@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { chats, images } from "@/db/schema";
-import { AVAL_IMAGE_MODEL, getAvalClient } from "@/server/aval/client";
 import {
   InsufficientCreditsError,
   consume,
@@ -11,6 +10,10 @@ import {
   refund,
   type CreditMovement,
 } from "@/server/credits";
+import { IMAGE_NEGATIVE_PROMPT } from "@/lib/image-prompt";
+import { qaCheckImage } from "@/server/glm/image-qa";
+import { enSubjectHint } from "@/server/glm/en-subject";
+import { QWEN_IMAGE_MODEL, generateWithQwen } from "@/server/comfy/qwen";
 import { getStorage } from "@/server/storage";
 
 const ASPECT_RATIOS = [
@@ -31,36 +34,29 @@ const IMAGE_KINDS = ["generated", "standardized"] as const;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Append the English object phrase to the composed prompt (probe-proven
+ * mode anchor). GLM failure degrades to the original prompt.
+ */
+async function withSubjectHint(
+  prompt: string,
+  brief?: string,
+): Promise<string> {
+  const hint = await enSubjectHint(brief?.trim() ? brief : prompt);
+  if (!hint) return prompt;
+  return `${prompt}\n(photograph of ${hint})`;
+}
+
 interface ImageBody {
   prompt?: string;
+  /** The raw spec-card brief — used for the English subject hint. */
+  brief?: string;
   aspectRatio?: string;
   chatId?: string;
   /** Optional reference image (variation/standardize turns) — an images.id owned by this session. */
   refImageId?: string;
   /** 'generated' (default) | 'standardized' — stored on the images row (issue 13). */
   kind?: string;
-}
-
-/** Aval Gemini-image response shape (issue 01). */
-interface AvalImageResponse {
-  choices?: Array<{
-    message?: {
-      images?: Array<{ image_url?: { url?: string } }>;
-    };
-  }>;
-}
-
-/** Vision/reference content part (issue 01 — image input rides chat completions). */
-interface AvalContentPart {
-  type: "text" | "image_url";
-  text?: string;
-  image_url?: { url: string };
-}
-
-function extForMime(mime: string): string {
-  if (mime === "image/jpeg") return ".jpg";
-  if (mime === "image/webp") return ".webp";
-  return ".png";
 }
 
 export async function POST(req: Request) {
@@ -102,10 +98,9 @@ export async function POST(req: Request) {
   }
 
   // Optional reference image (issue 13): must be an image row owned by this
-  // session. Inlined as a base64 data URL — Aval's vision input accepts data
-  // URLs (issue 01); the local driver's relative publicUrl would not be
-  // fetchable by the provider.
-  let refDataUrl: string | null = null;
+  // session. Its bytes are uploaded to ComfyUI and drive the Qwen edit graph
+  // (ref = edit-encoder image1 + latent source).
+  let ref: { bytes: Uint8Array; mime: string } | null = null;
   if (typeof body.refImageId === "string" && body.refImageId) {
     if (!UUID_RE.test(body.refImageId)) {
       return NextResponse.json({ error: "invalid_ref" }, { status: 400 });
@@ -117,12 +112,12 @@ export async function POST(req: Request) {
         and(eq(images.id, body.refImageId), eq(images.sessionId, sessionId)),
       )
       .limit(1);
-    const ref = refRows[0];
-    const stored = ref ? await storage.get(ref.storageKey) : null;
-    if (!ref || !stored) {
+    const refRow = refRows[0];
+    const stored = refRow ? await storage.get(refRow.storageKey) : null;
+    if (!refRow || !stored) {
       return NextResponse.json({ error: "ref_not_found" }, { status: 404 });
     }
-    refDataUrl = `data:${ref.mime};base64,${Buffer.from(stored.bytes).toString("base64")}`;
+    ref = { bytes: stored.bytes, mime: stored.mime };
   }
 
   const imageId = randomUUID();
@@ -141,39 +136,56 @@ export async function POST(req: Request) {
   }
 
   try {
-    const client = getAvalClient();
-    // Gemini image generation rides the chat-completions endpoint with
-    // modalities + generationConfig extras (Aval-specific, issue 01).
-    const content: string | AvalContentPart[] = refDataUrl
-      ? [
-          { type: "image_url", image_url: { url: refDataUrl } },
-          { type: "text", text: prompt },
-        ]
-      : prompt;
-    const completion = (await client.chat.completions.create({
-      model: AVAL_IMAGE_MODEL,
-      modalities: ["image", "text"],
-      messages: [{ role: "user", content }],
-      generationConfig: {
-        imageConfig: { aspectRatio, imageSize: "1K" },
-      },
-    } as Parameters<typeof client.chat.completions.create>[0])) as unknown as Awaited<
-      ReturnType<typeof client.chat.completions.create>
-    > &
-      AvalImageResponse;
+    // Qwen Image 2.1 on the local ComfyUI server (chat stays on Aval).
+    // English subject hint: Persian religious/architectural subjects render
+    // as text documents without it (2026-10-08 shrine failure — the probe
+    // isolated the hint as the decisive lever).
+    const fullPrompt = await withSubjectHint(prompt, body.brief);
+    const genOpts = {
+      prompt: fullPrompt,
+      negativePrompt: IMAGE_NEGATIVE_PROMPT,
+      aspectRatio,
+      refBytes: ref?.bytes ?? null,
+      refMime: ref?.mime,
+    };
+    let result = await generateWithQwen(genOpts);
+    const meta: Record<string, unknown> = {
+      prompt,
+      aspectRatio,
+      model: QWEN_IMAGE_MODEL,
+      seed: result.seed,
+      refImageId:
+        typeof body.refImageId === "string" && body.refImageId
+          ? body.refImageId
+          : null,
+    };
 
-    const dataUrl =
-      completion.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!dataUrl || !dataUrl.startsWith("data:")) {
-      throw new Error("Aval returned no image payload");
+    // QA gate (2026-10-08): the vision model judges every frame before it is
+    // ever shown; text/document/multi-object frames get ONE free re-roll —
+    // the shrine turn rendered the prompt as a document in all 4 slots. The
+    // re-roll is on us (same 1 credit), and an unreachable judge skips the
+    // gate instead of failing the request.
+    const first = await qaCheckImage(result.bytes, result.mime);
+    if (first.status === "fail") {
+      const retried = await generateWithQwen(genOpts);
+      const second = await qaCheckImage(retried.bytes, retried.mime);
+      result = retried;
+      meta.seed = result.seed;
+      meta.qa =
+        second.status === "pass"
+          ? { retried: true, final: "pass", first: first.verdict }
+          : second.status === "fail"
+            ? { retried: true, final: "fail", first: first.verdict, second: second.verdict }
+            : { retried: true, final: "skipped", reason: second.reason, first: first.verdict };
+    } else if (first.status === "pass") {
+      meta.qa = { retried: false, final: "pass", summary: first.verdict.summary };
+    } else {
+      meta.qa = { final: "skipped", reason: first.reason };
     }
-    const [header, b64] = dataUrl.split(",", 2);
-    const mime = /^data:([^;]+)/.exec(header ?? "")?.[1] ?? "image/png";
-    const bytes = Buffer.from(b64 ?? "", "base64");
-    if (bytes.length === 0) throw new Error("Aval image payload was empty");
 
-    const key = `images/${sessionId}/${imageId}${extForMime(mime)}`;
-    await storage.put(key, new Uint8Array(bytes), mime);
+    const mime = result.mime; // SaveImage output is always PNG
+    const key = `images/${sessionId}/${imageId}.png`;
+    await storage.put(key, result.bytes, mime);
 
     await db.insert(images).values({
       id: imageId,
@@ -182,15 +194,7 @@ export async function POST(req: Request) {
       kind,
       storageKey: key,
       mime,
-      meta: {
-        prompt,
-        aspectRatio,
-        model: AVAL_IMAGE_MODEL,
-        refImageId:
-          typeof body.refImageId === "string" && body.refImageId
-            ? body.refImageId
-            : null,
-      },
+      meta,
     });
 
     return NextResponse.json({ imageId, url: storage.publicUrl(key) });

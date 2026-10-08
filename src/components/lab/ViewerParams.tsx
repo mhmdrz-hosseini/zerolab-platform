@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { onLabEvent } from "@/lib/lab-bus";
 import { onThreedState, type ThreedPhase } from "@/components/viewer/flow-events";
@@ -25,6 +26,7 @@ import {
 const fa = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 
 export function ViewerParams() {
+  const router = useRouter();
   const [phase, setPhase] = useState<ThreedPhase>("idle");
   const [taskId, setTaskId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<HTMLElement | null>(null);
@@ -183,6 +185,18 @@ export function ViewerParams() {
       <p className="mt-2 text-[10px] leading-4 text-ink/45">
         مقیاس نمایشی مدل — {fa(SIZE_MIN)} تا {fa(SIZE_MAX)} سانتی‌متر.
       </p>
+
+      {/* Mold-studio entry (ticket 04/13): after 3D completes, the model is
+          ready to become a mold — size rides viewerParams into the studio. */}
+      {taskId && (
+        <button
+          type="button"
+          onClick={() => router.push(`/studio?task=${taskId}`)}
+          className="mt-2.5 w-full rounded-full bg-plum px-3 py-2 text-[11px] font-extrabold text-paper transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-plum"
+        >
+          ورود به استودیو قالب ←
+        </button>
+      )}
     </section>,
     overlay,
   );

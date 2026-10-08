@@ -2,7 +2,7 @@
  * Brief extraction for the image step (ticket 12 → 13 contract).
  *
  * The system prompt (ticket 06) makes the model end with a one-line
- * «کارت مشخصات طرح»: سوژه | سبک | اندازه (cm) | جزئیات کلیدی.
+ * «کارت مشخصات طرح»: سوژهٔ هندسی | متریال نمایش | سبک | اندازه (cm) | جزئیات کلیدی.
  * `extractBrief` returns that line when present, otherwise falls back to
  * the last 10 messages concatenated. The result is emitted on
  * `lab:generate-image` as `{ brief, chatId }` for the image flow.

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoldForge WebUI</title>
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/build/three.module.js",
+    "three/addons/": "/vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<header id="topbar">
+  <div id="brand">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2 21 7v10l-9 5-9-5V7l9-5z" stroke="#e8b44a" stroke-width="1.6"
+            stroke-linejoin="round"/>
+      <path d="M12 12 21 7M12 12v10M12 12 3 7" stroke="#e8b44a" stroke-width="1.2"/>
+    </svg>
+    <span>Mold<b>Forge</b> <span class="sub">WebUI</span></span>
+  </div>
+  <div id="modelSlot">
+    <button id="uploadBtn" class="btn ghost empty">Upload model</button>
+    <span id="fileName">no model loaded</span>
+    <button id="sizeChip" class="hidden" title="Preview &amp; change the model size">– cm</button>
+    <input type="file" id="fileInput" accept=".stl,.obj,.ply,.glb,.gltf" hidden>
+  </div>
+  <button id="generateBtn" class="btn primary" disabled>Generate Mold</button>
+</header>
+
+<nav id="stageTabs">
+  <button data-pane="paramsPane" class="on" type="button">Editor</button>
+  <button data-pane="viewportWrap" type="button">3D</button>
+  <button data-pane="resultsPane" type="button">Results</button>
+</nav>
+
+<section id="intake">
+  <div id="intakeViewportSlot"></div>
+  <div id="intakeHero">
+    <div class="heroCard">
+      <h1>Upload your 3D model</h1>
+      <p>Drag &amp; drop a file anywhere, or click to browse.<br>
+         Rotate and resize it in the next step.</p>
+      <button id="heroBrowse" class="btn primary" type="button">Browse files</button>
+      <div class="heroFormats">STL · OBJ · PLY · GLB / GLTF</div>
+    </div>
+  </div>
+  <div id="sizeCard" class="hidden">
+    <div id="sizeHead">
+      <span id="sizeName"></span>
+      <span id="sizeTris"></span>
+      <button id="sizeRepick" class="btn" type="button">Choose file</button>
+    </div>
+    <div id="sizeDims"></div>
+    <div id="sizeHint"></div>
+    <div id="sizeWarn"></div>
+    <div id="sizeLabel">Final size <span>(longest side)</span></div>
+    <div id="sizeRow">
+      <input type="range" id="sizeSlider" min="3" max="20" step="0.1" value="10"
+             aria-label="Final size, longest side, in centimetres">
+      <span class="sizeNumWrap">
+        <input type="number" id="sizeNum" min="3" max="20" step="0.1" value="10"
+               aria-label="Final size in centimetres"> <span id="sizeUnit">cm</span>
+      </span>
+    </div>
+    <div id="sizeMeta">
+      <span id="sizeOrig"></span>
+      <span id="sizeFactor"></span>
+      <button id="sizeReset" class="btn" type="button">Reset</button>
+    </div>
+    <div id="sizeLabel">Rotation <span>(degrees — the mold is built in this orientation)</span></div>
+    <div id="rotRow">
+      <label class="rotAxis"><span>X</span>
+        <input type="number" id="rotX" min="-180" max="180" step="5" value="0"
+               aria-label="Rotation around the X axis, degrees"></label>
+      <label class="rotAxis"><span>Y</span>
+        <input type="number" id="rotY" min="-180" max="180" step="5" value="0"
+               aria-label="Rotation around the Y axis, degrees"></label>
+      <label class="rotAxis"><span>Z</span>
+        <input type="number" id="rotZ" min="-180" max="180" step="5" value="0"
+               aria-label="Rotation around the Z axis, degrees"></label>
+      <button id="rotReset" class="btn" type="button"
+              title="Back to 0° on every axis">0°</button>
+    </div>
+    <div id="sizeActions">
+      <button id="sizeContinue" class="btn primary" type="button">Continue to mold editor →</button>
+    </div>
+  </div>
+</section>
+
+<main id="layout">
+  <aside id="paramsPane">
+    <div id="paramsHead">Parameters</div>
+    <div id="advisor" class="hidden"></div>
+    <div id="params"></div>
+  </aside>
+
+  <section id="viewportWrap">
+    <div id="viewport"></div>
+    <div id="viewerBar" class="hidden">
+      <div class="segmented" id="viewMode">
+        <button type="button" data-mode="print" class="on"
+                title="Parts laid out on the build plate in their recommended print orientation">🖨 Print bed</button>
+        <button type="button" data-mode="assembly"
+                title="The mold system assembled around your model">Assembly</button>
+      </div>
+      <button id="fitBtn" class="vbtn" title="Fit view">⤢ Fit</button>
+      <button id="wireBtn" class="vbtn" title="Toggle wireframe">Wire</button>
+      <label class="vlabel" id="masterVisWrap"><input type="checkbox" id="masterVis" checked> model</label>
+      <label class="vlabel" id="explodeWrap">explode
+        <input type="range" id="explode" min="0" max="100" value="0">
+      </label>
+    </div>
+    <div id="dropHint">drop STL / OBJ / PLY / GLB</div>
+  </section>
+
+  <aside id="resultsPane">
+    <div id="resultsHead">Results</div>
+    <div id="results"></div>
+  </aside>
+</main>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

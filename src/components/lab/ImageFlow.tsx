@@ -113,7 +113,9 @@ export function ImageFlow() {
   const [compareIdx, setCompareIdx] = useState<number[]>([]);
 
   const turnSeqRef = useRef(0);
-  const turnBodyRef = useRef<Record<string, unknown> | null>(null);
+  // One body per gallery slot — each carries its own variation axis prompt
+  // (بازنگری 2026-10-08: four identical bodies collapsed into near-clones).
+  const turnBodiesRef = useRef<Record<string, unknown>[]>([]);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const refreshWarning = useCallback(async () => {
@@ -199,19 +201,22 @@ export function ImageFlow() {
       setTurnRefUrl(params.refUrl);
       setTurn((t) => t + 1);
 
-      const prompt = buildImagePrompt(
-        params.brief,
-        params.feedback ? { feedback: params.feedback } : undefined,
-      );
-      const body: Record<string, unknown> = {
-        prompt,
-        aspectRatio: params.ratio,
-      };
-      if (params.chatId) body.chatId = params.chatId;
-      if (params.refImageId) body.refImageId = params.refImageId;
-      turnBodyRef.current = body;
+      const bodies = [0, 1, 2, 3].map((i) => {
+        const body: Record<string, unknown> = {
+          prompt: buildImagePrompt(params.brief, {
+            variationIndex: i,
+            ...(params.feedback ? { feedback: params.feedback } : {}),
+          }),
+          brief: params.brief,
+          aspectRatio: params.ratio,
+        };
+        if (params.chatId) body.chatId = params.chatId;
+        if (params.refImageId) body.refImageId = params.refImageId;
+        return body;
+      });
+      turnBodiesRef.current = bodies;
 
-      await Promise.all([0, 1, 2, 3].map((i) => fireSlot(seq, i, body)));
+      await Promise.all(bodies.map((b, i) => fireSlot(seq, i, b)));
       void refreshWarning();
     },
     [fireSlot, refreshWarning],
@@ -323,7 +328,7 @@ export function ImageFlow() {
 
   /** Retry a single failed slot (the route refunds failed calls). */
   const retrySlot = async (index: number) => {
-    const body = turnBodyRef.current;
+    const body = turnBodiesRef.current[index];
     if (!body || busy || phase !== "gallery") return;
     const seq = ++turnSeqRef.current;
     setSlots((prev) => replaceAt(prev, index, { status: "loading" }));
@@ -403,14 +408,14 @@ export function ImageFlow() {
   const header = (() => {
     if (phase === "standardizing") {
       return {
-        title: "در حال استانداردسازی…",
-        subtitle: "یک رندر استودیویی تمیز از همان طرح",
+        title: "در حال ساخت نسخهٔ فنی…",
+        subtitle: "رندر خنثی از همان طرح — ورودی مدل‌سازی سه‌بعدی",
       };
     }
     if (phase === "confirm") {
       return {
         title: "تأیید دومرحله‌ای",
-        subtitle: "طرح انتخابی در برابر نسخهٔ استاندارد",
+        subtitle: "طرح انتخابی در برابر نسخهٔ فنی",
       };
     }
     if (variationSource) {
@@ -567,10 +572,10 @@ export function ImageFlow() {
                 className="h-10 w-10 animate-spin rounded-full border-2 border-line border-t-plum"
               />
               <p className="text-sm font-extrabold text-plum">
-                در حال ساخت نسخهٔ استاندارد…
+                در حال ساخت نسخهٔ فنی…
               </p>
               <p className="max-w-xs text-xs leading-6 text-ink/55">
-                نمای سه‌ربع، پس‌زمینهٔ سادهٔ سفید-کرم — یک اعتبار تصویر مصرف می‌شود.
+                تک‌رنگ مات، معلق و بدون پس‌زمینه — یک اعتبار تصویر مصرف می‌شود.
               </p>
             </div>
           )}
@@ -595,7 +600,7 @@ export function ImageFlow() {
                     className="aspect-[4/3] w-full object-contain"
                   />
                   <figcaption className="border-t border-teal/30 bg-paper px-3 py-2 text-center text-[11px] font-extrabold text-teal">
-                    نسخهٔ استاندارد
+                    نسخهٔ فنی (ورودی 3D)
                   </figcaption>
                 </figure>
               </div>
@@ -643,7 +648,7 @@ export function ImageFlow() {
                   تصحیح دوباره
                 </button>
                 <p className="text-[11px] text-ink/50">
-                  با تأیید، نسخهٔ استاندارد برای ساخت مدل سه‌بعدی ارسال می‌شود.
+                  با تأیید، نسخهٔ فنی برای ساخت مدل سه‌بعدی ارسال می‌شود.
                 </p>
               </div>
             </div>

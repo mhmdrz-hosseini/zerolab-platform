@@ -9,12 +9,16 @@ export const COSTS = {
   image: 5,
   /** Tripo H3.1 detailed ≈ $0.40 — see issue 05-grilling-credit-economics. */
   threed: 40,
+  /** Mold studio generation (mold-studio ticket 06) — local engine, priced
+   *  for compute time; placeholder until pricing is tuned. */
+  mold: 60,
 } as const;
 
 export const FREE_GRANT = {
   chat: 30,
   image: 8,
   threed: 1,
+  mold: 1,
 } as const;
 
 export type CreditService = keyof typeof COSTS;

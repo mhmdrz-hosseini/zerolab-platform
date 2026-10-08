@@ -5,6 +5,7 @@ import { ChatPanel } from "@/components/lab/ChatPanel";
 import { CreditIndicator } from "@/components/lab/CreditIndicator";
 import { CreditWall } from "@/components/lab/CreditWall";
 import { ImageFlow } from "@/components/lab/ImageFlow";
+import { HistoryButton } from "@/components/lab/HistoryDrawer";
 import { LibraryButton } from "@/components/lab/LibraryButton";
 import { ThreeDFlow } from "@/components/lab/ThreeDFlow";
 import { ViewerParams } from "@/components/lab/ViewerParams";
@@ -46,6 +47,7 @@ export default async function LabPage() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <CreditIndicator />
+          <HistoryButton />
           <LibraryButton />
         </div>
       </header>

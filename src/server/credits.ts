@@ -10,6 +10,17 @@ const SESSION_COOKIE = "zl_sid";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 /**
+ * Test switch (operator, 2026-10-05): set CREDITS_UNLIMITED=1 in .env.local to
+ * make every quota effectively infinite — grants are reported and spent as a
+ * huge pool so the credit wall never locks. Ledger rows still record and
+ * refunds still work; production default (flag unset) is untouched.
+ */
+const UNLIMITED_CREDITS = process.env.CREDITS_UNLIMITED === "1";
+const UNLIMITED_GRANT = 1_000_000;
+const effectiveGrant = (kind: CreditService): number =>
+  UNLIMITED_CREDITS ? UNLIMITED_GRANT : FREE_GRANT[kind];
+
+/**
  * Thrown when both the per-kind free quota and the paid pool are exhausted.
  * Routes should map it to HTTP 402 with the Persian wall copy (ticket 16).
  */
@@ -114,7 +125,7 @@ export async function getQuota(
 
   const out = {} as Record<CreditService, QuotaSnapshot>;
   for (const kind of Object.keys(COSTS) as CreditService[]) {
-    const freeGrant = FREE_GRANT[kind];
+    const freeGrant = effectiveGrant(kind);
     const cost = COSTS[kind];
     out[kind] = {
       kind,
@@ -150,7 +161,7 @@ export async function consume(
         ),
       );
     const freeRemaining =
-      FREE_GRANT[kind] - Number(freeRows[0]?.used ?? 0);
+      effectiveGrant(kind) - Number(freeRows[0]?.used ?? 0);
 
     if (freeRemaining > 0) {
       const [row] = await tx
